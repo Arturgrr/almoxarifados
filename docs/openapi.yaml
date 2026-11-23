@@ -1,0 +1,3424 @@
+openapi: 3.0.3
+info:
+  description: |-
+    API do sistema de gestão de almoxarifado de obras do Grupo A2G.
+
+    **Autenticação:** chame `POST /api/auth/login`; a resposta define o cookie HttpOnly `sessao`,
+    enviado automaticamente nas próximas requisições. A sessão expira após 8 h sem uso.
+
+    **Formatos:** quantidades e valores são strings decimais (`"18.5"`), datas usam `aaaa-mm-dd`.
+    Erros sempre vêm como `{"erro": "..."}`; erros de validação (422) trazem também `campos`.
+  title: API Almoxarifado A2G
+  version: 1.0.0
+servers:
+- url: http://localhost:3000
+paths:
+  /api/admin/painel:
+    get:
+      description: Somente administrador.
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/PainelAdminRow'
+                type: array
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+      security:
+      - sessao: []
+      summary: Visão geral dos empreendimentos em andamento
+      tags:
+      - Administração
+  /api/admin/perdas-anormais:
+    get:
+      description: Somente administrador.
+      parameters:
+      - in: query
+        name: pagina
+        schema:
+          default: 1
+          minimum: 1
+          type: integer
+      - in: query
+        name: por_pagina
+        schema:
+          default: 50
+          maximum: 200
+          minimum: 1
+          type: integer
+      - in: query
+        name: empreendimento_id
+        schema:
+          format: int64
+          type: integer
+      - in: query
+        name: data_inicio
+        schema:
+          format: date
+          type: string
+      - in: query
+        name: data_fim
+        schema:
+          format: date
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaPerdasAnormais'
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+      security:
+      - sessao: []
+      summary: Perdas e ajustes de inventário fora da tolerância
+      tags:
+      - Administração
+  /api/auth/login:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginReq'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessaoResp'
+          description: OK
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+          description: Unprocessable Entity
+      summary: Entra no sistema e recebe o cookie de sessão
+      tags:
+      - Autenticação
+  /api/auth/logout:
+    post:
+      description: Requer login.
+      responses:
+        "204":
+          description: No Content
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+      security:
+      - sessao: []
+      summary: Sai do sistema
+      tags:
+      - Autenticação
+  /api/auth/me:
+    get:
+      description: Requer login.
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessaoResp'
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+      security:
+      - sessao: []
+      summary: Usuário logado e seus empreendimentos
+      tags:
+      - Autenticação
+  /api/auth/senha:
+    put:
+      description: Requer login.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlterarSenhaReq'
+      responses:
+        "204":
+          description: No Content
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+          description: Unprocessable Entity
+      security:
+      - sessao: []
+      summary: Altera a própria senha
+      tags:
+      - Autenticação
+  /api/categorias:
+    get:
+      description: Requer login.
+      parameters:
+      - in: query
+        name: ativo
+        schema:
+          nullable: true
+          type: boolean
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/Categoria'
+                type: array
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+      security:
+      - sessao: []
+      summary: Lista categorias
+      tags:
+      - Catálogo
+    post:
+      description: Somente administrador.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoriaReq'
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Categoria'
+          description: Created
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+          description: Unprocessable Entity
+      security:
+      - sessao: []
+      summary: Cadastra categoria
+      tags:
+      - Catálogo
+  /api/categorias/{id}:
+    put:
+      description: Somente administrador.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoriaReq'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Categoria'
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+          description: Unprocessable Entity
+      security:
+      - sessao: []
+      summary: Edita categoria
+      tags:
+      - Catálogo
+  /api/empreendimentos:
+    get:
+      description: Requer login.
+      parameters:
+      - in: query
+        name: status
+        schema:
+          enum:
+          - em_andamento
+          - concluido
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ListEmpreendimentosRow'
+                type: array
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+      security:
+      - sessao: []
+      summary: Lista os empreendimentos que o usuário pode acessar
+      tags:
+      - Empreendimentos
+    post:
+      description: Somente administrador.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmpreendimentoReq'
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Empreendimento'
+          description: Created
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+          description: Unprocessable Entity
+      security:
+      - sessao: []
+      summary: Cadastra empreendimento
+      tags:
+      - Empreendimentos
+  /api/empreendimentos/{id}:
+    get:
+      description: Administrador ou usuário de obra associado ao empreendimento.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Empreendimento'
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Busca empreendimento
+      tags:
+      - Empreendimentos
+    put:
+      description: Somente administrador.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmpreendimentoReq'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Empreendimento'
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+          description: Unprocessable Entity
+      security:
+      - sessao: []
+      summary: Edita empreendimento
+      tags:
+      - Empreendimentos
+  /api/empreendimentos/{id}/destinos:
+    get:
+      description: Administrador ou usuário de obra associado ao empreendimento.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  type: string
+                type: array
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Destinos já usados em saídas (sugestões)
+      tags:
+      - Estoque
+  /api/empreendimentos/{id}/encerrar:
+    post:
+      description: Somente administrador.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Encerra o empreendimento (fica só para consulta)
+      tags:
+      - Empreendimentos
+  /api/empreendimentos/{id}/entradas:
+    post:
+      description: Administrador ou usuário de obra associado ao empreendimento.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntradaReq'
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/Movimentacao'
+                type: array
+          description: Created
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+          description: Unprocessable Entity
+      security:
+      - sessao: []
+      summary: Registra entrada (compra ou devolução)
+      tags:
+      - Estoque
+  /api/empreendimentos/{id}/equipe:
+    get:
+      description: Administrador ou usuário de obra associado ao empreendimento.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ListEquipeRow'
+                type: array
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Lista a equipe
+      tags:
+      - Empreendimentos
+    post:
+      description: Somente administrador.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MembroReq'
+      responses:
+        "204":
+          description: No Content
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+          description: Unprocessable Entity
+      security:
+      - sessao: []
+      summary: Associa usuário de obra
+      tags:
+      - Empreendimentos
+  /api/empreendimentos/{id}/equipe/{usuarioId}:
+    delete:
+      description: Somente administrador.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      - in: path
+        name: usuarioId
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Remove usuário da equipe
+      tags:
+      - Empreendimentos
+  /api/empreendimentos/{id}/inventarios:
+    get:
+      description: Administrador ou usuário de obra associado ao empreendimento.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ListInventariosRow'
+                type: array
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Histórico de inventários
+      tags:
+      - Inventário
+    post:
+      description: Administrador ou usuário de obra associado ao empreendimento.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AbrirInventarioReq'
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventarioResp'
+          description: Created
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+          description: Unprocessable Entity
+      security:
+      - sessao: []
+      summary: Abre inventário
+      tags:
+      - Inventário
+  /api/empreendimentos/{id}/inventarios/{invId}:
+    get:
+      description: Administrador ou usuário de obra associado ao empreendimento.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      - in: path
+        name: invId
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventarioResp'
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Inventário com itens; aberto mostra a prévia das diferenças
+      tags:
+      - Inventário
+  /api/empreendimentos/{id}/inventarios/{invId}/cancelar:
+    post:
+      description: Administrador ou usuário de obra associado ao empreendimento.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      - in: path
+        name: invId
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Cancela inventário aberto
+      tags:
+      - Inventário
+  /api/empreendimentos/{id}/inventarios/{invId}/contagem:
+    put:
+      description: Administrador ou usuário de obra associado ao empreendimento.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      - in: path
+        name: invId
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContagemReq'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventarioResp'
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+          description: Unprocessable Entity
+      security:
+      - sessao: []
+      summary: Salva a contagem (parcial ou total)
+      tags:
+      - Inventário
+  /api/empreendimentos/{id}/inventarios/{invId}/finalizar:
+    post:
+      description: Administrador ou usuário de obra associado ao empreendimento.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      - in: path
+        name: invId
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinalizarReq'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventarioResp'
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+          description: Unprocessable Entity
+      security:
+      - sessao: []
+      summary: Finaliza e gera os ajustes
+      tags:
+      - Inventário
+  /api/empreendimentos/{id}/movimentacoes:
+    get:
+      description: Administrador ou usuário de obra associado ao empreendimento.
+      parameters:
+      - in: query
+        name: pagina
+        schema:
+          default: 1
+          minimum: 1
+          type: integer
+      - in: query
+        name: por_pagina
+        schema:
+          default: 50
+          maximum: 200
+          minimum: 1
+          type: integer
+      - in: query
+        name: data_inicio
+        schema:
+          format: date
+          type: string
+      - in: query
+        name: data_fim
+        schema:
+          format: date
+          type: string
+      - in: query
+        name: tipo
+        schema:
+          enum:
+          - entrada
+          - saida
+          - perda
+          - ajuste
+          - estorno
+          type: string
+      - description: Com este filtro a lista vira a ficha do item
+        in: query
+        name: item_id
+        schema:
+          description: Com este filtro a lista vira a ficha do item
+          format: int64
+          type: integer
+      - in: query
+        name: usuario_id
+        schema:
+          format: int64
+          type: integer
+      - in: query
+        name: fornecedor_id
+        schema:
+          format: int64
+          type: integer
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaMovimentacoes'
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Histórico de movimentações
+      tags:
+      - Estoque
+  /api/empreendimentos/{id}/movimentacoes/{movId}/estorno:
+    post:
+      description: Administrador ou usuário de obra associado ao empreendimento.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      - in: path
+        name: movId
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EstornoReq'
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movimentacao'
+          description: Created
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+          description: Unprocessable Entity
+      security:
+      - sessao: []
+      summary: 'Estorna uma movimentação (usuário de obra: só as próprias)'
+      tags:
+      - Estoque
+  /api/empreendimentos/{id}/perdas:
+    post:
+      description: Administrador ou usuário de obra associado ao empreendimento.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PerdaReq'
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movimentacao'
+          description: Created
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+          description: Unprocessable Entity
+      security:
+      - sessao: []
+      summary: Registra perda
+      tags:
+      - Estoque
+  /api/empreendimentos/{id}/reabrir:
+    post:
+      description: Somente administrador.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Reabre empreendimento concluído
+      tags:
+      - Empreendimentos
+  /api/empreendimentos/{id}/saidas:
+    post:
+      description: Administrador ou usuário de obra associado ao empreendimento.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaidaReq'
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movimentacao'
+          description: Created
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+          description: Unprocessable Entity
+      security:
+      - sessao: []
+      summary: Registra saída
+      tags:
+      - Estoque
+  /api/empreendimentos/{id}/saldos:
+    get:
+      description: Administrador ou usuário de obra associado ao empreendimento.
+      parameters:
+      - in: query
+        name: busca
+        schema:
+          type: string
+      - in: query
+        name: categoria_id
+        schema:
+          format: int64
+          type: integer
+      - in: query
+        name: tipo
+        schema:
+          enum:
+          - consumo
+          - equipamento
+          type: string
+      - description: Itens com saldo zero ficam ocultos por padrão
+        in: query
+        name: incluir_zerados
+        schema:
+          description: Itens com saldo zero ficam ocultos por padrão
+          type: boolean
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ListSaldosRow'
+                type: array
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Saldo atual de cada item
+      tags:
+      - Estoque
+  /api/fornecedores:
+    get:
+      description: Requer login.
+      parameters:
+      - in: query
+        name: pagina
+        schema:
+          default: 1
+          minimum: 1
+          type: integer
+      - in: query
+        name: por_pagina
+        schema:
+          default: 50
+          maximum: 200
+          minimum: 1
+          type: integer
+      - description: Nome, nome fantasia ou CNPJ/CPF
+        in: query
+        name: busca
+        schema:
+          description: Nome, nome fantasia ou CNPJ/CPF
+          type: string
+      - in: query
+        name: ativo
+        schema:
+          nullable: true
+          type: boolean
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaFornecedores'
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+      security:
+      - sessao: []
+      summary: Lista fornecedores
+      tags:
+      - Fornecedores
+    post:
+      description: Requer login.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FornecedorReq'
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fornecedor'
+          description: Created
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+          description: Unprocessable Entity
+      security:
+      - sessao: []
+      summary: Cadastra fornecedor
+      tags:
+      - Fornecedores
+  /api/fornecedores/{id}:
+    delete:
+      description: Somente administrador.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Exclui fornecedor sem movimentação
+      tags:
+      - Fornecedores
+    get:
+      description: Requer login.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fornecedor'
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Busca fornecedor
+      tags:
+      - Fornecedores
+    put:
+      description: Somente administrador.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FornecedorReq'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fornecedor'
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+          description: Unprocessable Entity
+      security:
+      - sessao: []
+      summary: Edita fornecedor
+      tags:
+      - Fornecedores
+  /api/fornecedores/{id}/desativar:
+    post:
+      description: Somente administrador.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Desativa fornecedor
+      tags:
+      - Fornecedores
+  /api/fornecedores/{id}/reativar:
+    post:
+      description: Somente administrador.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Reativa fornecedor
+      tags:
+      - Fornecedores
+  /api/health:
+    get:
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Saude'
+          description: OK
+      summary: Verifica se a API está no ar
+      tags:
+      - Autenticação
+  /api/itens:
+    get:
+      description: Requer login.
+      parameters:
+      - in: query
+        name: pagina
+        schema:
+          default: 1
+          minimum: 1
+          type: integer
+      - in: query
+        name: por_pagina
+        schema:
+          default: 50
+          maximum: 200
+          minimum: 1
+          type: integer
+      - description: Nome ou código
+        in: query
+        name: busca
+        schema:
+          description: Nome ou código
+          type: string
+      - in: query
+        name: tipo
+        schema:
+          enum:
+          - consumo
+          - equipamento
+          type: string
+      - in: query
+        name: categoria_id
+        schema:
+          format: int64
+          type: integer
+      - in: query
+        name: ativo
+        schema:
+          nullable: true
+          type: boolean
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaItens'
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+      security:
+      - sessao: []
+      summary: Lista o catálogo de itens
+      tags:
+      - Catálogo
+    post:
+      description: Requer login.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemReq'
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+          description: Created
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+          description: Unprocessable Entity
+      security:
+      - sessao: []
+      summary: Cadastra item no catálogo
+      tags:
+      - Catálogo
+  /api/itens/{id}:
+    delete:
+      description: Somente administrador.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Exclui item sem movimentação
+      tags:
+      - Catálogo
+    get:
+      description: Requer login.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Busca item
+      tags:
+      - Catálogo
+    put:
+      description: Somente administrador.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemReq'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+          description: Unprocessable Entity
+      security:
+      - sessao: []
+      summary: Edita item
+      tags:
+      - Catálogo
+  /api/itens/{id}/desativar:
+    post:
+      description: Somente administrador.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Desativa item
+      tags:
+      - Catálogo
+  /api/itens/{id}/reativar:
+    post:
+      description: Somente administrador.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Reativa item
+      tags:
+      - Catálogo
+  /api/itens/{id}/saldos:
+    get:
+      description: Somente administrador.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaldoConsolidadoResp'
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Saldo do item em cada empreendimento
+      tags:
+      - Catálogo
+  /api/usuarios:
+    get:
+      description: Somente administrador.
+      parameters:
+      - description: Nome ou e-mail
+        in: query
+        name: busca
+        schema:
+          description: Nome ou e-mail
+          type: string
+      - in: query
+        name: perfil
+        schema:
+          enum:
+          - admin
+          - obra
+          type: string
+      - in: query
+        name: ativo
+        schema:
+          nullable: true
+          type: boolean
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ListUsuariosRow'
+                type: array
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+      security:
+      - sessao: []
+      summary: Lista usuários
+      tags:
+      - Usuários
+    post:
+      description: Somente administrador.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NovoUsuarioReq'
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+          description: Created
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+          description: Unprocessable Entity
+      security:
+      - sessao: []
+      summary: Cadastra usuário
+      tags:
+      - Usuários
+  /api/usuarios/{id}:
+    get:
+      description: Somente administrador.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Busca usuário
+      tags:
+      - Usuários
+    put:
+      description: Somente administrador.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsuarioReq'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+          description: Unprocessable Entity
+      security:
+      - sessao: []
+      summary: Edita usuário
+      tags:
+      - Usuários
+  /api/usuarios/{id}/desativar:
+    post:
+      description: Somente administrador.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Desativa usuário e encerra suas sessões
+      tags:
+      - Usuários
+  /api/usuarios/{id}/reativar:
+    post:
+      description: Somente administrador.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+      security:
+      - sessao: []
+      summary: Reativa usuário
+      tags:
+      - Usuários
+  /api/usuarios/{id}/senha:
+    put:
+      description: Somente administrador.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RedefinirSenhaReq'
+      responses:
+        "204":
+          description: No Content
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+          description: Unprocessable Entity
+      security:
+      - sessao: []
+      summary: Redefine a senha de um usuário
+      tags:
+      - Usuários
+components:
+  schemas:
+    AbrirInventarioReq:
+      properties:
+        categoria_id:
+          description: Vazio para inventariar todos os itens com saldo
+          nullable: true
+          type: integer
+      type: object
+    AlterarSenhaReq:
+      properties:
+        confirmacao:
+          type: string
+        nova_senha:
+          maxLength: 72
+          minLength: 8
+          type: string
+        senha_atual:
+          type: string
+      required:
+      - senha_atual
+      - nova_senha
+      - confirmacao
+      type: object
+    Categoria:
+      properties:
+        ativo:
+          type: boolean
+        criado_em:
+          format: date-time
+          type: string
+        id:
+          format: int64
+          type: integer
+        nome:
+          type: string
+      type: object
+    CategoriaReq:
+      properties:
+        ativo:
+          description: Só na edição; se omitido mantém o valor atual
+          nullable: true
+          type: boolean
+        nome:
+          example: Agregados
+          type: string
+      required:
+      - nome
+      type: object
+    ContagemReq:
+      properties:
+        itens:
+          items:
+            $ref: '#/components/schemas/LinhaContagem'
+          nullable: true
+          type: array
+      required:
+      - itens
+      type: object
+    Date:
+      example: "2026-01-10"
+      format: date
+      nullable: true
+      type: string
+    Empreendimento:
+      properties:
+        atualizado_em:
+          format: date-time
+          type: string
+        cidade:
+          nullable: true
+          type: string
+        criado_em:
+          format: date-time
+          type: string
+        data_inicio:
+          $ref: '#/components/schemas/Date'
+        endereco:
+          nullable: true
+          type: string
+        id:
+          format: int64
+          type: integer
+        nome:
+          type: string
+        previsao_termino:
+          $ref: '#/components/schemas/Date'
+        responsavel_id:
+          nullable: true
+          type: integer
+        status:
+          type: string
+        tipo:
+          type: string
+      type: object
+    EmpreendimentoReq:
+      properties:
+        cidade:
+          example: Porto Seguro
+          nullable: true
+          type: string
+        data_inicio:
+          $ref: '#/components/schemas/Date'
+        endereco:
+          nullable: true
+          type: string
+        nome:
+          example: Condomínio Sol
+          type: string
+        previsao_termino:
+          $ref: '#/components/schemas/Date'
+        responsavel_id:
+          description: Chefe de obra. Se for usuário de obra, é associado à equipe
+            automaticamente
+          nullable: true
+          type: integer
+        tipo:
+          enum:
+          - condominio
+          - casas
+          - edificio
+          - outro
+          type: string
+      required:
+      - nome
+      - tipo
+      - data_inicio
+      type: object
+    EntradaReq:
+      properties:
+        data:
+          $ref: '#/components/schemas/Date'
+        fornecedor_id:
+          description: Obrigatório na compra
+          nullable: true
+          type: integer
+        itens:
+          items:
+            $ref: '#/components/schemas/LinhaEntrada'
+          minItems: 1
+          nullable: true
+          type: array
+        nota_fiscal:
+          nullable: true
+          type: string
+        observacoes:
+          nullable: true
+          type: string
+        origem_compra:
+          description: Obrigatório na compra
+          enum:
+          - obra
+          - administracao
+          nullable: true
+          type: string
+        servico:
+          description: 'Obrigatório na devolução: de qual serviço o item voltou'
+          nullable: true
+          type: string
+        tipo:
+          enum:
+          - compra
+          - devolucao
+          type: string
+      required:
+      - tipo
+      - itens
+      type: object
+    Erro:
+      properties:
+        erro:
+          example: Registro não encontrado
+          type: string
+      type: object
+    ErroValidacao:
+      properties:
+        campos:
+          additionalProperties:
+            type: string
+          example:
+            nome: Campo obrigatório
+          nullable: true
+          type: object
+        erro:
+          example: Verifique os campos informados
+          type: string
+      type: object
+    EstornoReq:
+      properties:
+        justificativa:
+          type: string
+      required:
+      - justificativa
+      type: object
+    FinalizarReq:
+      properties:
+        justificativas:
+          description: Obrigatória para cada item com diferença anormal
+          items:
+            $ref: '#/components/schemas/Justificativa'
+          nullable: true
+          type: array
+      type: object
+    Fornecedor:
+      properties:
+        ativo:
+          type: boolean
+        atualizado_em:
+          format: date-time
+          type: string
+        cidade:
+          nullable: true
+          type: string
+        criado_em:
+          format: date-time
+          type: string
+        documento:
+          nullable: true
+          type: string
+        email:
+          nullable: true
+          type: string
+        id:
+          format: int64
+          type: integer
+        nome:
+          type: string
+        nome_fantasia:
+          nullable: true
+          type: string
+        observacoes:
+          nullable: true
+          type: string
+        telefone:
+          nullable: true
+          type: string
+      type: object
+    FornecedorReq:
+      properties:
+        cidade:
+          nullable: true
+          type: string
+        documento:
+          description: CNPJ (numérico ou alfanumérico) ou CPF, com ou sem máscara
+          example: 11.222.333/0001-81
+          nullable: true
+          type: string
+        email:
+          format: email
+          nullable: true
+          type: string
+        nome:
+          example: Depósito Porto Seguro LTDA
+          type: string
+        nome_fantasia:
+          nullable: true
+          type: string
+        observacoes:
+          nullable: true
+          type: string
+        telefone:
+          nullable: true
+          type: string
+      required:
+      - nome
+      type: object
+    Inventario:
+      properties:
+        aberto_em:
+          format: date-time
+          type: string
+        aberto_por:
+          format: int64
+          type: integer
+        categoria_id:
+          nullable: true
+          type: integer
+        empreendimento_id:
+          format: int64
+          type: integer
+        finalizado_em:
+          format: date-time
+          nullable: true
+          type: string
+        finalizado_por:
+          nullable: true
+          type: integer
+        id:
+          format: int64
+          type: integer
+        status:
+          type: string
+      type: object
+    InventarioResp:
+      properties:
+        inventario:
+          $ref: '#/components/schemas/Inventario'
+        itens:
+          items:
+            $ref: '#/components/schemas/ItemInventario'
+          nullable: true
+          type: array
+      type: object
+    Item:
+      properties:
+        ativo:
+          type: boolean
+        atualizado_em:
+          format: date-time
+          type: string
+        categoria_id:
+          format: int64
+          type: integer
+        codigo:
+          type: string
+        criado_em:
+          format: date-time
+          type: string
+        descricao:
+          nullable: true
+          type: string
+        granel:
+          type: boolean
+        id:
+          format: int64
+          type: integer
+        nome:
+          type: string
+        tipo:
+          type: string
+        tolerancia_pct:
+          example: "18.5"
+          nullable: true
+          type: string
+        unidade:
+          type: string
+      type: object
+    ItemInventario:
+      properties:
+        classificacao:
+          nullable: true
+          type: string
+        codigo:
+          type: string
+        descricao:
+          nullable: true
+          type: string
+        diferenca:
+          example: "18.5"
+          nullable: true
+          type: string
+        granel:
+          type: boolean
+        item:
+          type: string
+        item_id:
+          format: int64
+          type: integer
+        motivo:
+          nullable: true
+          type: string
+        percentual:
+          example: "18.5"
+          nullable: true
+          type: string
+        quantidade_contada:
+          example: "18.5"
+          nullable: true
+          type: string
+        saldo_atual:
+          example: "18.5"
+          type: string
+        saldo_registrado:
+          example: "18.5"
+          nullable: true
+          type: string
+        tolerancia_pct:
+          example: "18.5"
+          nullable: true
+          type: string
+        unidade:
+          type: string
+      type: object
+    ItemReq:
+      properties:
+        categoria_id:
+          format: int64
+          type: integer
+        descricao:
+          nullable: true
+          type: string
+        granel:
+          type: boolean
+        nome:
+          example: Areia média
+          type: string
+        tipo:
+          enum:
+          - consumo
+          - equipamento
+          type: string
+        tolerancia_pct:
+          description: Percentual de variação natural (0 a 100). Só o administrador
+            define, e só para granel
+          example: "18.5"
+          nullable: true
+          type: string
+        unidade:
+          description: Não pode mudar depois da primeira movimentação
+          enum:
+          - kg
+          - L
+          - m
+          - m2
+          - m3
+          - un
+          type: string
+      required:
+      - nome
+      - tipo
+      - categoria_id
+      - unidade
+      type: object
+    Justificativa:
+      properties:
+        descricao:
+          description: Obrigatória quando o motivo é outro
+          nullable: true
+          type: string
+        item_id:
+          format: int64
+          type: integer
+        motivo:
+          enum:
+          - quebra
+          - vencimento
+          - intemperie
+          - extravio
+          - variacao_medida
+          - outro
+          type: string
+      required:
+      - item_id
+      - motivo
+      type: object
+    LinhaContagem:
+      properties:
+        item_id:
+          format: int64
+          type: integer
+        quantidade_contada:
+          description: null limpa a contagem do item
+          example: "18.5"
+          nullable: true
+          type: string
+      required:
+      - item_id
+      type: object
+    LinhaEntrada:
+      properties:
+        item_id:
+          format: int64
+          type: integer
+        quantidade:
+          description: Maior que zero; inteiro para un, até 3 casas para as demais
+            unidades
+          example: "18.5"
+          type: string
+        valor_unitario:
+          description: Só para compra
+          example: "18.5"
+          nullable: true
+          type: string
+      required:
+      - item_id
+      - quantidade
+      type: object
+    ListEmpreendimentosDoUsuarioRow:
+      properties:
+        id:
+          format: int64
+          type: integer
+        nome:
+          type: string
+        status:
+          type: string
+      type: object
+    ListEmpreendimentosRow:
+      properties:
+        cidade:
+          nullable: true
+          type: string
+        data_inicio:
+          $ref: '#/components/schemas/Date'
+        id:
+          format: int64
+          type: integer
+        itens_em_estoque:
+          format: int64
+          type: integer
+        nome:
+          type: string
+        status:
+          type: string
+        tipo:
+          type: string
+        ultima_movimentacao_em: {}
+      type: object
+    ListEquipeRow:
+      properties:
+        associado_em:
+          format: date-time
+          type: string
+        ativo:
+          type: boolean
+        email:
+          type: string
+        id:
+          format: int64
+          type: integer
+        nome:
+          type: string
+        telefone:
+          nullable: true
+          type: string
+      type: object
+    ListFornecedoresRow:
+      properties:
+        ativo:
+          type: boolean
+        atualizado_em:
+          format: date-time
+          type: string
+        cidade:
+          nullable: true
+          type: string
+        criado_em:
+          format: date-time
+          type: string
+        documento:
+          nullable: true
+          type: string
+        email:
+          nullable: true
+          type: string
+        id:
+          format: int64
+          type: integer
+        nome:
+          type: string
+        nome_fantasia:
+          nullable: true
+          type: string
+        observacoes:
+          nullable: true
+          type: string
+        telefone:
+          nullable: true
+          type: string
+        total:
+          format: int64
+          type: integer
+      type: object
+    ListInventariosRow:
+      properties:
+        aberto_em:
+          format: date-time
+          type: string
+        aberto_por:
+          format: int64
+          type: integer
+        aberto_por_nome:
+          type: string
+        categoria:
+          nullable: true
+          type: string
+        categoria_id:
+          nullable: true
+          type: integer
+        diferencas_anormais:
+          format: int64
+          type: integer
+        finalizado_em:
+          format: date-time
+          nullable: true
+          type: string
+        finalizado_por:
+          nullable: true
+          type: integer
+        id:
+          format: int64
+          type: integer
+        status:
+          type: string
+        total_itens:
+          format: int64
+          type: integer
+        variacoes_naturais:
+          format: int64
+          type: integer
+      type: object
+    ListItensRow:
+      properties:
+        ativo:
+          type: boolean
+        atualizado_em:
+          format: date-time
+          type: string
+        categoria:
+          type: string
+        categoria_id:
+          format: int64
+          type: integer
+        codigo:
+          type: string
+        criado_em:
+          format: date-time
+          type: string
+        descricao:
+          nullable: true
+          type: string
+        granel:
+          type: boolean
+        id:
+          format: int64
+          type: integer
+        nome:
+          type: string
+        tipo:
+          type: string
+        tolerancia_pct:
+          example: "18.5"
+          nullable: true
+          type: string
+        total:
+          format: int64
+          type: integer
+        unidade:
+          type: string
+      type: object
+    ListMovimentacoesRow:
+      properties:
+        data:
+          $ref: '#/components/schemas/Date'
+        descricao:
+          nullable: true
+          type: string
+        destino:
+          nullable: true
+          type: string
+        estornada:
+          type: boolean
+        estorno_de:
+          nullable: true
+          type: integer
+        fornecedor:
+          nullable: true
+          type: string
+        fornecedor_id:
+          nullable: true
+          type: integer
+        id:
+          format: int64
+          type: integer
+        inventario_id:
+          nullable: true
+          type: integer
+        item:
+          type: string
+        item_id:
+          format: int64
+          type: integer
+        lancado_em:
+          format: date-time
+          type: string
+        motivo:
+          nullable: true
+          type: string
+        nota_fiscal:
+          nullable: true
+          type: string
+        origem_compra:
+          nullable: true
+          type: string
+        quantidade:
+          example: "18.5"
+          type: string
+        retirado_por:
+          nullable: true
+          type: string
+        saldo_apos:
+          example: "18.5"
+          type: string
+        subtipo:
+          nullable: true
+          type: string
+        tipo:
+          type: string
+        total:
+          format: int64
+          type: integer
+        unidade:
+          type: string
+        usuario:
+          type: string
+        usuario_id:
+          format: int64
+          type: integer
+        valor_unitario:
+          example: "18.5"
+          nullable: true
+          type: string
+      type: object
+    ListPerdasAnormaisRow:
+      properties:
+        data:
+          $ref: '#/components/schemas/Date'
+        descricao:
+          nullable: true
+          type: string
+        empreendimento:
+          type: string
+        empreendimento_id:
+          format: int64
+          type: integer
+        id:
+          format: int64
+          type: integer
+        item:
+          type: string
+        item_id:
+          format: int64
+          type: integer
+        lancado_em:
+          format: date-time
+          type: string
+        motivo:
+          nullable: true
+          type: string
+        quantidade:
+          example: "18.5"
+          type: string
+        tipo:
+          type: string
+        total:
+          format: int64
+          type: integer
+        unidade:
+          type: string
+        usuario:
+          type: string
+        valor_unitario:
+          example: "18.5"
+          nullable: true
+          type: string
+      type: object
+    ListSaldosRow:
+      properties:
+        categoria:
+          type: string
+        categoria_id:
+          format: int64
+          type: integer
+        codigo:
+          type: string
+        granel:
+          type: boolean
+        item_id:
+          format: int64
+          type: integer
+        nome:
+          type: string
+        quantidade:
+          example: "18.5"
+          type: string
+        tipo:
+          type: string
+        ultima_movimentacao_em:
+          format: date-time
+          type: string
+        unidade:
+          type: string
+      type: object
+    ListUsuariosRow:
+      properties:
+        ativo:
+          type: boolean
+        criado_em:
+          format: date-time
+          type: string
+        email:
+          type: string
+        empreendimentos:
+          items:
+            type: string
+          nullable: true
+          type: array
+        id:
+          format: int64
+          type: integer
+        nome:
+          type: string
+        perfil:
+          type: string
+        telefone:
+          nullable: true
+          type: string
+      type: object
+    LoginReq:
+      properties:
+        email:
+          example: admin@a2g.com.br
+          format: email
+          type: string
+        senha:
+          example: trocar123
+          type: string
+      required:
+      - email
+      - senha
+      type: object
+    MembroReq:
+      properties:
+        usuario_id:
+          description: Usuário ativo com perfil obra
+          format: int64
+          type: integer
+      required:
+      - usuario_id
+      type: object
+    Movimentacao:
+      properties:
+        data:
+          $ref: '#/components/schemas/Date'
+        descricao:
+          nullable: true
+          type: string
+        destino:
+          nullable: true
+          type: string
+        empreendimento_id:
+          format: int64
+          type: integer
+        estorno_de:
+          nullable: true
+          type: integer
+        fornecedor_id:
+          nullable: true
+          type: integer
+        id:
+          format: int64
+          type: integer
+        inventario_id:
+          nullable: true
+          type: integer
+        item_id:
+          format: int64
+          type: integer
+        lancado_em:
+          format: date-time
+          type: string
+        motivo:
+          nullable: true
+          type: string
+        nota_fiscal:
+          nullable: true
+          type: string
+        origem_compra:
+          nullable: true
+          type: string
+        quantidade:
+          example: "18.5"
+          type: string
+        retirado_por:
+          nullable: true
+          type: string
+        saldo_apos:
+          example: "18.5"
+          type: string
+        subtipo:
+          nullable: true
+          type: string
+        tipo:
+          type: string
+        usuario_id:
+          format: int64
+          type: integer
+        valor_unitario:
+          example: "18.5"
+          nullable: true
+          type: string
+      type: object
+    NovoUsuarioReq:
+      properties:
+        email:
+          example: joao@a2g.com.br
+          format: email
+          type: string
+        nome:
+          example: João da Silva
+          type: string
+        perfil:
+          enum:
+          - admin
+          - obra
+          type: string
+        senha:
+          description: Senha inicial, informada pelo administrador ao funcionário
+          maxLength: 72
+          minLength: 8
+          type: string
+        telefone:
+          example: (73) 99999-0000
+          nullable: true
+          type: string
+      required:
+      - nome
+      - email
+      - perfil
+      - senha
+      type: object
+    PaginaFornecedores:
+      properties:
+        dados:
+          items:
+            $ref: '#/components/schemas/ListFornecedoresRow'
+          nullable: true
+          type: array
+        pagina:
+          format: int32
+          type: integer
+        por_pagina:
+          format: int32
+          type: integer
+        total:
+          format: int64
+          type: integer
+      type: object
+    PaginaItens:
+      properties:
+        dados:
+          items:
+            $ref: '#/components/schemas/ListItensRow'
+          nullable: true
+          type: array
+        pagina:
+          format: int32
+          type: integer
+        por_pagina:
+          format: int32
+          type: integer
+        total:
+          format: int64
+          type: integer
+      type: object
+    PaginaMovimentacoes:
+      properties:
+        dados:
+          items:
+            $ref: '#/components/schemas/ListMovimentacoesRow'
+          nullable: true
+          type: array
+        pagina:
+          format: int32
+          type: integer
+        por_pagina:
+          format: int32
+          type: integer
+        total:
+          format: int64
+          type: integer
+      type: object
+    PaginaPerdasAnormais:
+      properties:
+        dados:
+          items:
+            $ref: '#/components/schemas/ListPerdasAnormaisRow'
+          nullable: true
+          type: array
+        pagina:
+          format: int32
+          type: integer
+        por_pagina:
+          format: int32
+          type: integer
+        total:
+          format: int64
+          type: integer
+      type: object
+    PainelAdminRow:
+      properties:
+        cidade:
+          nullable: true
+          type: string
+        id:
+          format: int64
+          type: integer
+        itens_em_estoque:
+          format: int64
+          type: integer
+        nome:
+          type: string
+        perdas_no_mes:
+          format: int64
+          type: integer
+      type: object
+    PerdaReq:
+      properties:
+        data:
+          $ref: '#/components/schemas/Date'
+        descricao:
+          description: Obrigatória quando o motivo é outro
+          nullable: true
+          type: string
+        item_id:
+          format: int64
+          type: integer
+        motivo:
+          enum:
+          - quebra
+          - vencimento
+          - intemperie
+          - extravio
+          - variacao_medida
+          - outro
+          type: string
+        quantidade:
+          example: "18.5"
+          type: string
+      required:
+      - item_id
+      - quantidade
+      - motivo
+      type: object
+    RedefinirSenhaReq:
+      properties:
+        senha:
+          description: Nova senha provisória
+          maxLength: 72
+          minLength: 8
+          type: string
+      required:
+      - senha
+      type: object
+    SaidaReq:
+      properties:
+        data:
+          $ref: '#/components/schemas/Date'
+        destino:
+          description: Serviço ou local de destino
+          example: Alvenaria – Bloco B
+          type: string
+        item_id:
+          format: int64
+          type: integer
+        observacoes:
+          nullable: true
+          type: string
+        quantidade:
+          example: "18.5"
+          type: string
+        retirado_por:
+          description: Quem retirou; pode não ser usuário do sistema
+          example: Zé (pedreiro)
+          type: string
+      required:
+      - item_id
+      - quantidade
+      - destino
+      - retirado_por
+      type: object
+    SaldoConsolidadoItemRow:
+      properties:
+        empreendimento:
+          type: string
+        empreendimento_id:
+          format: int64
+          type: integer
+        quantidade:
+          example: "18.5"
+          type: string
+      type: object
+    SaldoConsolidadoResp:
+      properties:
+        item:
+          $ref: '#/components/schemas/Item'
+        saldos:
+          items:
+            $ref: '#/components/schemas/SaldoConsolidadoItemRow'
+          nullable: true
+          type: array
+      type: object
+    Saude:
+      properties:
+        status:
+          example: ok
+          type: string
+      type: object
+    SessaoResp:
+      properties:
+        empreendimentos:
+          items:
+            $ref: '#/components/schemas/ListEmpreendimentosDoUsuarioRow'
+          nullable: true
+          type: array
+        usuario:
+          $ref: '#/components/schemas/Usuario'
+      type: object
+    Usuario:
+      properties:
+        ativo:
+          type: boolean
+        atualizado_em:
+          format: date-time
+          type: string
+        criado_em:
+          format: date-time
+          type: string
+        email:
+          type: string
+        id:
+          format: int64
+          type: integer
+        nome:
+          type: string
+        perfil:
+          type: string
+        telefone:
+          nullable: true
+          type: string
+        trocar_senha:
+          type: boolean
+      type: object
+    UsuarioReq:
+      properties:
+        email:
+          example: joao@a2g.com.br
+          format: email
+          type: string
+        nome:
+          example: João da Silva
+          type: string
+        perfil:
+          enum:
+          - admin
+          - obra
+          type: string
+        telefone:
+          example: (73) 99999-0000
+          nullable: true
+          type: string
+      required:
+      - nome
+      - email
+      - perfil
+      type: object
+  securitySchemes:
+    sessao:
+      description: Cookie HttpOnly definido pelo login
+      in: cookie
+      name: sessao
+      type: apiKey

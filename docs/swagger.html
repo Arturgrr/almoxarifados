@@ -1,0 +1,5388 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>API Almoxarifado A2G</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui.css">
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-bundle.js"></script>
+  <script>
+    SwaggerUIBundle({
+      spec: {
+  "openapi": "3.0.3",
+  "info": {
+    "title": "API Almoxarifado A2G",
+    "description": "API do sistema de gestão de almoxarifado de obras do Grupo A2G.\n\n**Autenticação:** chame `POST /api/auth/login`; a resposta define o cookie HttpOnly `sessao`,\nenviado automaticamente nas próximas requisições. A sessão expira após 8 h sem uso.\n\n**Formatos:** quantidades e valores são strings decimais (`\"18.5\"`), datas usam `aaaa-mm-dd`.\nErros sempre vêm como `{\"erro\": \"...\"}`; erros de validação (422) trazem também `campos`.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000"
+    }
+  ],
+  "paths": {
+    "/api/admin/painel": {
+      "get": {
+        "tags": [
+          "Administração"
+        ],
+        "summary": "Visão geral dos empreendimentos em andamento",
+        "description": "Somente administrador.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PainelAdminRow"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/admin/perdas-anormais": {
+      "get": {
+        "tags": [
+          "Administração"
+        ],
+        "summary": "Perdas e ajustes de inventário fora da tolerância",
+        "description": "Somente administrador.",
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "por_pagina",
+            "in": "query",
+            "schema": {
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer",
+              "default": 50
+            }
+          },
+          {
+            "name": "empreendimento_id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "data_inicio",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "data_fim",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaPerdasAnormais"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "Autenticação"
+        ],
+        "summary": "Entra no sistema e recebe o cookie de sessão",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessaoResp"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "Autenticação"
+        ],
+        "summary": "Sai do sistema",
+        "description": "Requer login.",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "Autenticação"
+        ],
+        "summary": "Usuário logado e seus empreendimentos",
+        "description": "Requer login.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessaoResp"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/auth/senha": {
+      "put": {
+        "tags": [
+          "Autenticação"
+        ],
+        "summary": "Altera a própria senha",
+        "description": "Requer login.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlterarSenhaReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/categorias": {
+      "get": {
+        "tags": [
+          "Catálogo"
+        ],
+        "summary": "Lista categorias",
+        "description": "Requer login.",
+        "parameters": [
+          {
+            "name": "ativo",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Categoria"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Catálogo"
+        ],
+        "summary": "Cadastra categoria",
+        "description": "Somente administrador.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoriaReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Categoria"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/categorias/{id}": {
+      "put": {
+        "tags": [
+          "Catálogo"
+        ],
+        "summary": "Edita categoria",
+        "description": "Somente administrador.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoriaReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Categoria"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/empreendimentos": {
+      "get": {
+        "tags": [
+          "Empreendimentos"
+        ],
+        "summary": "Lista os empreendimentos que o usuário pode acessar",
+        "description": "Requer login.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "enum": [
+                "em_andamento",
+                "concluido"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ListEmpreendimentosRow"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Empreendimentos"
+        ],
+        "summary": "Cadastra empreendimento",
+        "description": "Somente administrador.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmpreendimentoReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Empreendimento"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/empreendimentos/{id}": {
+      "get": {
+        "tags": [
+          "Empreendimentos"
+        ],
+        "summary": "Busca empreendimento",
+        "description": "Administrador ou usuário de obra associado ao empreendimento.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Empreendimento"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Empreendimentos"
+        ],
+        "summary": "Edita empreendimento",
+        "description": "Somente administrador.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmpreendimentoReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Empreendimento"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/empreendimentos/{id}/destinos": {
+      "get": {
+        "tags": [
+          "Estoque"
+        ],
+        "summary": "Destinos já usados em saídas (sugestões)",
+        "description": "Administrador ou usuário de obra associado ao empreendimento.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/empreendimentos/{id}/encerrar": {
+      "post": {
+        "tags": [
+          "Empreendimentos"
+        ],
+        "summary": "Encerra o empreendimento (fica só para consulta)",
+        "description": "Somente administrador.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/empreendimentos/{id}/entradas": {
+      "post": {
+        "tags": [
+          "Estoque"
+        ],
+        "summary": "Registra entrada (compra ou devolução)",
+        "description": "Administrador ou usuário de obra associado ao empreendimento.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntradaReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Movimentacao"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/empreendimentos/{id}/equipe": {
+      "get": {
+        "tags": [
+          "Empreendimentos"
+        ],
+        "summary": "Lista a equipe",
+        "description": "Administrador ou usuário de obra associado ao empreendimento.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ListEquipeRow"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Empreendimentos"
+        ],
+        "summary": "Associa usuário de obra",
+        "description": "Somente administrador.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MembroReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/empreendimentos/{id}/equipe/{usuarioId}": {
+      "delete": {
+        "tags": [
+          "Empreendimentos"
+        ],
+        "summary": "Remove usuário da equipe",
+        "description": "Somente administrador.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "usuarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/empreendimentos/{id}/inventarios": {
+      "get": {
+        "tags": [
+          "Inventário"
+        ],
+        "summary": "Histórico de inventários",
+        "description": "Administrador ou usuário de obra associado ao empreendimento.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ListInventariosRow"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Inventário"
+        ],
+        "summary": "Abre inventário",
+        "description": "Administrador ou usuário de obra associado ao empreendimento.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AbrirInventarioReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventarioResp"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/empreendimentos/{id}/inventarios/{invId}": {
+      "get": {
+        "tags": [
+          "Inventário"
+        ],
+        "summary": "Inventário com itens; aberto mostra a prévia das diferenças",
+        "description": "Administrador ou usuário de obra associado ao empreendimento.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "invId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventarioResp"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/empreendimentos/{id}/inventarios/{invId}/cancelar": {
+      "post": {
+        "tags": [
+          "Inventário"
+        ],
+        "summary": "Cancela inventário aberto",
+        "description": "Administrador ou usuário de obra associado ao empreendimento.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "invId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/empreendimentos/{id}/inventarios/{invId}/contagem": {
+      "put": {
+        "tags": [
+          "Inventário"
+        ],
+        "summary": "Salva a contagem (parcial ou total)",
+        "description": "Administrador ou usuário de obra associado ao empreendimento.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "invId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContagemReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventarioResp"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/empreendimentos/{id}/inventarios/{invId}/finalizar": {
+      "post": {
+        "tags": [
+          "Inventário"
+        ],
+        "summary": "Finaliza e gera os ajustes",
+        "description": "Administrador ou usuário de obra associado ao empreendimento.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "invId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FinalizarReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventarioResp"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/empreendimentos/{id}/movimentacoes": {
+      "get": {
+        "tags": [
+          "Estoque"
+        ],
+        "summary": "Histórico de movimentações",
+        "description": "Administrador ou usuário de obra associado ao empreendimento.",
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "por_pagina",
+            "in": "query",
+            "schema": {
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer",
+              "default": 50
+            }
+          },
+          {
+            "name": "data_inicio",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "data_fim",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "schema": {
+              "enum": [
+                "entrada",
+                "saida",
+                "perda",
+                "ajuste",
+                "estorno"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "item_id",
+            "in": "query",
+            "description": "Com este filtro a lista vira a ficha do item",
+            "schema": {
+              "type": "integer",
+              "description": "Com este filtro a lista vira a ficha do item",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "usuario_id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "fornecedor_id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaMovimentacoes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/empreendimentos/{id}/movimentacoes/{movId}/estorno": {
+      "post": {
+        "tags": [
+          "Estoque"
+        ],
+        "summary": "Estorna uma movimentação (usuário de obra: só as próprias)",
+        "description": "Administrador ou usuário de obra associado ao empreendimento.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "movId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EstornoReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Movimentacao"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/empreendimentos/{id}/perdas": {
+      "post": {
+        "tags": [
+          "Estoque"
+        ],
+        "summary": "Registra perda",
+        "description": "Administrador ou usuário de obra associado ao empreendimento.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PerdaReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Movimentacao"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/empreendimentos/{id}/reabrir": {
+      "post": {
+        "tags": [
+          "Empreendimentos"
+        ],
+        "summary": "Reabre empreendimento concluído",
+        "description": "Somente administrador.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/empreendimentos/{id}/saidas": {
+      "post": {
+        "tags": [
+          "Estoque"
+        ],
+        "summary": "Registra saída",
+        "description": "Administrador ou usuário de obra associado ao empreendimento.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaidaReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Movimentacao"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/empreendimentos/{id}/saldos": {
+      "get": {
+        "tags": [
+          "Estoque"
+        ],
+        "summary": "Saldo atual de cada item",
+        "description": "Administrador ou usuário de obra associado ao empreendimento.",
+        "parameters": [
+          {
+            "name": "busca",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoria_id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "schema": {
+              "enum": [
+                "consumo",
+                "equipamento"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "incluir_zerados",
+            "in": "query",
+            "description": "Itens com saldo zero ficam ocultos por padrão",
+            "schema": {
+              "type": "boolean",
+              "description": "Itens com saldo zero ficam ocultos por padrão"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ListSaldosRow"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/fornecedores": {
+      "get": {
+        "tags": [
+          "Fornecedores"
+        ],
+        "summary": "Lista fornecedores",
+        "description": "Requer login.",
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "por_pagina",
+            "in": "query",
+            "schema": {
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer",
+              "default": 50
+            }
+          },
+          {
+            "name": "busca",
+            "in": "query",
+            "description": "Nome, nome fantasia ou CNPJ/CPF",
+            "schema": {
+              "type": "string",
+              "description": "Nome, nome fantasia ou CNPJ/CPF"
+            }
+          },
+          {
+            "name": "ativo",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaFornecedores"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Fornecedores"
+        ],
+        "summary": "Cadastra fornecedor",
+        "description": "Requer login.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FornecedorReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fornecedor"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/fornecedores/{id}": {
+      "delete": {
+        "tags": [
+          "Fornecedores"
+        ],
+        "summary": "Exclui fornecedor sem movimentação",
+        "description": "Somente administrador.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "Fornecedores"
+        ],
+        "summary": "Busca fornecedor",
+        "description": "Requer login.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fornecedor"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Fornecedores"
+        ],
+        "summary": "Edita fornecedor",
+        "description": "Somente administrador.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FornecedorReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fornecedor"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/fornecedores/{id}/desativar": {
+      "post": {
+        "tags": [
+          "Fornecedores"
+        ],
+        "summary": "Desativa fornecedor",
+        "description": "Somente administrador.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/fornecedores/{id}/reativar": {
+      "post": {
+        "tags": [
+          "Fornecedores"
+        ],
+        "summary": "Reativa fornecedor",
+        "description": "Somente administrador.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": [
+          "Autenticação"
+        ],
+        "summary": "Verifica se a API está no ar",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Saude"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/itens": {
+      "get": {
+        "tags": [
+          "Catálogo"
+        ],
+        "summary": "Lista o catálogo de itens",
+        "description": "Requer login.",
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "por_pagina",
+            "in": "query",
+            "schema": {
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer",
+              "default": 50
+            }
+          },
+          {
+            "name": "busca",
+            "in": "query",
+            "description": "Nome ou código",
+            "schema": {
+              "type": "string",
+              "description": "Nome ou código"
+            }
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "schema": {
+              "enum": [
+                "consumo",
+                "equipamento"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoria_id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "ativo",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaItens"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Catálogo"
+        ],
+        "summary": "Cadastra item no catálogo",
+        "description": "Requer login.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Item"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/itens/{id}": {
+      "delete": {
+        "tags": [
+          "Catálogo"
+        ],
+        "summary": "Exclui item sem movimentação",
+        "description": "Somente administrador.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "Catálogo"
+        ],
+        "summary": "Busca item",
+        "description": "Requer login.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Item"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Catálogo"
+        ],
+        "summary": "Edita item",
+        "description": "Somente administrador.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Item"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/itens/{id}/desativar": {
+      "post": {
+        "tags": [
+          "Catálogo"
+        ],
+        "summary": "Desativa item",
+        "description": "Somente administrador.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/itens/{id}/reativar": {
+      "post": {
+        "tags": [
+          "Catálogo"
+        ],
+        "summary": "Reativa item",
+        "description": "Somente administrador.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/itens/{id}/saldos": {
+      "get": {
+        "tags": [
+          "Catálogo"
+        ],
+        "summary": "Saldo do item em cada empreendimento",
+        "description": "Somente administrador.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaldoConsolidadoResp"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/usuarios": {
+      "get": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Lista usuários",
+        "description": "Somente administrador.",
+        "parameters": [
+          {
+            "name": "busca",
+            "in": "query",
+            "description": "Nome ou e-mail",
+            "schema": {
+              "type": "string",
+              "description": "Nome ou e-mail"
+            }
+          },
+          {
+            "name": "perfil",
+            "in": "query",
+            "schema": {
+              "enum": [
+                "admin",
+                "obra"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "ativo",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ListUsuariosRow"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Cadastra usuário",
+        "description": "Somente administrador.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NovoUsuarioReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Usuario"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/usuarios/{id}": {
+      "get": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Busca usuário",
+        "description": "Somente administrador.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Usuario"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Edita usuário",
+        "description": "Somente administrador.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsuarioReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Usuario"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/usuarios/{id}/desativar": {
+      "post": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Desativa usuário e encerra suas sessões",
+        "description": "Somente administrador.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/usuarios/{id}/reativar": {
+      "post": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Reativa usuário",
+        "description": "Somente administrador.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/usuarios/{id}/senha": {
+      "put": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Redefine a senha de um usuário",
+        "description": "Somente administrador.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedefinirSenhaReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroValidacao"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AbrirInventarioReq": {
+        "type": "object",
+        "properties": {
+          "categoria_id": {
+            "type": "integer",
+            "description": "Vazio para inventariar todos os itens com saldo",
+            "nullable": true
+          }
+        }
+      },
+      "AlterarSenhaReq": {
+        "required": [
+          "senha_atual",
+          "nova_senha",
+          "confirmacao"
+        ],
+        "type": "object",
+        "properties": {
+          "confirmacao": {
+            "type": "string"
+          },
+          "nova_senha": {
+            "maxLength": 72,
+            "minLength": 8,
+            "type": "string"
+          },
+          "senha_atual": {
+            "type": "string"
+          }
+        }
+      },
+      "Categoria": {
+        "type": "object",
+        "properties": {
+          "ativo": {
+            "type": "boolean"
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nome": {
+            "type": "string"
+          }
+        }
+      },
+      "CategoriaReq": {
+        "required": [
+          "nome"
+        ],
+        "type": "object",
+        "properties": {
+          "ativo": {
+            "type": "boolean",
+            "description": "Só na edição; se omitido mantém o valor atual",
+            "nullable": true
+          },
+          "nome": {
+            "type": "string",
+            "example": "Agregados"
+          }
+        }
+      },
+      "ContagemReq": {
+        "required": [
+          "itens"
+        ],
+        "type": "object",
+        "properties": {
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LinhaContagem"
+            },
+            "nullable": true
+          }
+        }
+      },
+      "Date": {
+        "type": "string",
+        "format": "date",
+        "nullable": true,
+        "example": "2026-01-10"
+      },
+      "Empreendimento": {
+        "type": "object",
+        "properties": {
+          "atualizado_em": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cidade": {
+            "type": "string",
+            "nullable": true
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "data_inicio": {
+            "$ref": "#/components/schemas/Date"
+          },
+          "endereco": {
+            "type": "string",
+            "nullable": true
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "previsao_termino": {
+            "$ref": "#/components/schemas/Date"
+          },
+          "responsavel_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "status": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          }
+        }
+      },
+      "EmpreendimentoReq": {
+        "required": [
+          "nome",
+          "tipo",
+          "data_inicio"
+        ],
+        "type": "object",
+        "properties": {
+          "cidade": {
+            "type": "string",
+            "nullable": true,
+            "example": "Porto Seguro"
+          },
+          "data_inicio": {
+            "$ref": "#/components/schemas/Date"
+          },
+          "endereco": {
+            "type": "string",
+            "nullable": true
+          },
+          "nome": {
+            "type": "string",
+            "example": "Condomínio Sol"
+          },
+          "previsao_termino": {
+            "$ref": "#/components/schemas/Date"
+          },
+          "responsavel_id": {
+            "type": "integer",
+            "description": "Chefe de obra. Se for usuário de obra, é associado à equipe automaticamente",
+            "nullable": true
+          },
+          "tipo": {
+            "enum": [
+              "condominio",
+              "casas",
+              "edificio",
+              "outro"
+            ],
+            "type": "string"
+          }
+        }
+      },
+      "EntradaReq": {
+        "required": [
+          "tipo",
+          "itens"
+        ],
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Date"
+          },
+          "fornecedor_id": {
+            "type": "integer",
+            "description": "Obrigatório na compra",
+            "nullable": true
+          },
+          "itens": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LinhaEntrada"
+            },
+            "nullable": true
+          },
+          "nota_fiscal": {
+            "type": "string",
+            "nullable": true
+          },
+          "observacoes": {
+            "type": "string",
+            "nullable": true
+          },
+          "origem_compra": {
+            "enum": [
+              "obra",
+              "administracao"
+            ],
+            "type": "string",
+            "description": "Obrigatório na compra",
+            "nullable": true
+          },
+          "servico": {
+            "type": "string",
+            "description": "Obrigatório na devolução: de qual serviço o item voltou",
+            "nullable": true
+          },
+          "tipo": {
+            "enum": [
+              "compra",
+              "devolucao"
+            ],
+            "type": "string"
+          }
+        }
+      },
+      "Erro": {
+        "type": "object",
+        "properties": {
+          "erro": {
+            "type": "string",
+            "example": "Registro não encontrado"
+          }
+        }
+      },
+      "ErroValidacao": {
+        "type": "object",
+        "properties": {
+          "campos": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "nullable": true,
+            "example": {
+              "nome": "Campo obrigatório"
+            }
+          },
+          "erro": {
+            "type": "string",
+            "example": "Verifique os campos informados"
+          }
+        }
+      },
+      "EstornoReq": {
+        "required": [
+          "justificativa"
+        ],
+        "type": "object",
+        "properties": {
+          "justificativa": {
+            "type": "string"
+          }
+        }
+      },
+      "FinalizarReq": {
+        "type": "object",
+        "properties": {
+          "justificativas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Justificativa"
+            },
+            "description": "Obrigatória para cada item com diferença anormal",
+            "nullable": true
+          }
+        }
+      },
+      "Fornecedor": {
+        "type": "object",
+        "properties": {
+          "ativo": {
+            "type": "boolean"
+          },
+          "atualizado_em": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cidade": {
+            "type": "string",
+            "nullable": true
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "documento": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "nome_fantasia": {
+            "type": "string",
+            "nullable": true
+          },
+          "observacoes": {
+            "type": "string",
+            "nullable": true
+          },
+          "telefone": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "FornecedorReq": {
+        "required": [
+          "nome"
+        ],
+        "type": "object",
+        "properties": {
+          "cidade": {
+            "type": "string",
+            "nullable": true
+          },
+          "documento": {
+            "type": "string",
+            "description": "CNPJ (numérico ou alfanumérico) ou CPF, com ou sem máscara",
+            "nullable": true,
+            "example": "11.222.333/0001-81"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "nullable": true
+          },
+          "nome": {
+            "type": "string",
+            "example": "Depósito Porto Seguro LTDA"
+          },
+          "nome_fantasia": {
+            "type": "string",
+            "nullable": true
+          },
+          "observacoes": {
+            "type": "string",
+            "nullable": true
+          },
+          "telefone": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "Inventario": {
+        "type": "object",
+        "properties": {
+          "aberto_em": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "aberto_por": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "categoria_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "empreendimento_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "finalizado_em": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finalizado_por": {
+            "type": "integer",
+            "nullable": true
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "InventarioResp": {
+        "type": "object",
+        "properties": {
+          "inventario": {
+            "$ref": "#/components/schemas/Inventario"
+          },
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemInventario"
+            },
+            "nullable": true
+          }
+        }
+      },
+      "Item": {
+        "type": "object",
+        "properties": {
+          "ativo": {
+            "type": "boolean"
+          },
+          "atualizado_em": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "categoria_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "codigo": {
+            "type": "string"
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "descricao": {
+            "type": "string",
+            "nullable": true
+          },
+          "granel": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "tolerancia_pct": {
+            "type": "string",
+            "nullable": true,
+            "example": "18.5"
+          },
+          "unidade": {
+            "type": "string"
+          }
+        }
+      },
+      "ItemInventario": {
+        "type": "object",
+        "properties": {
+          "classificacao": {
+            "type": "string",
+            "nullable": true
+          },
+          "codigo": {
+            "type": "string"
+          },
+          "descricao": {
+            "type": "string",
+            "nullable": true
+          },
+          "diferenca": {
+            "type": "string",
+            "nullable": true,
+            "example": "18.5"
+          },
+          "granel": {
+            "type": "boolean"
+          },
+          "item": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "motivo": {
+            "type": "string",
+            "nullable": true
+          },
+          "percentual": {
+            "type": "string",
+            "nullable": true,
+            "example": "18.5"
+          },
+          "quantidade_contada": {
+            "type": "string",
+            "nullable": true,
+            "example": "18.5"
+          },
+          "saldo_atual": {
+            "type": "string",
+            "example": "18.5"
+          },
+          "saldo_registrado": {
+            "type": "string",
+            "nullable": true,
+            "example": "18.5"
+          },
+          "tolerancia_pct": {
+            "type": "string",
+            "nullable": true,
+            "example": "18.5"
+          },
+          "unidade": {
+            "type": "string"
+          }
+        }
+      },
+      "ItemReq": {
+        "required": [
+          "nome",
+          "tipo",
+          "categoria_id",
+          "unidade"
+        ],
+        "type": "object",
+        "properties": {
+          "categoria_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "descricao": {
+            "type": "string",
+            "nullable": true
+          },
+          "granel": {
+            "type": "boolean"
+          },
+          "nome": {
+            "type": "string",
+            "example": "Areia média"
+          },
+          "tipo": {
+            "enum": [
+              "consumo",
+              "equipamento"
+            ],
+            "type": "string"
+          },
+          "tolerancia_pct": {
+            "type": "string",
+            "description": "Percentual de variação natural (0 a 100). Só o administrador define, e só para granel",
+            "nullable": true,
+            "example": "18.5"
+          },
+          "unidade": {
+            "enum": [
+              "kg",
+              "L",
+              "m",
+              "m2",
+              "m3",
+              "un"
+            ],
+            "type": "string",
+            "description": "Não pode mudar depois da primeira movimentação"
+          }
+        }
+      },
+      "Justificativa": {
+        "required": [
+          "item_id",
+          "motivo"
+        ],
+        "type": "object",
+        "properties": {
+          "descricao": {
+            "type": "string",
+            "description": "Obrigatória quando o motivo é outro",
+            "nullable": true
+          },
+          "item_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "motivo": {
+            "enum": [
+              "quebra",
+              "vencimento",
+              "intemperie",
+              "extravio",
+              "variacao_medida",
+              "outro"
+            ],
+            "type": "string"
+          }
+        }
+      },
+      "LinhaContagem": {
+        "required": [
+          "item_id"
+        ],
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "quantidade_contada": {
+            "type": "string",
+            "description": "null limpa a contagem do item",
+            "nullable": true,
+            "example": "18.5"
+          }
+        }
+      },
+      "LinhaEntrada": {
+        "required": [
+          "item_id",
+          "quantidade"
+        ],
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "quantidade": {
+            "type": "string",
+            "description": "Maior que zero; inteiro para un, até 3 casas para as demais unidades",
+            "example": "18.5"
+          },
+          "valor_unitario": {
+            "type": "string",
+            "description": "Só para compra",
+            "nullable": true,
+            "example": "18.5"
+          }
+        }
+      },
+      "ListEmpreendimentosDoUsuarioRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "ListEmpreendimentosRow": {
+        "type": "object",
+        "properties": {
+          "cidade": {
+            "type": "string",
+            "nullable": true
+          },
+          "data_inicio": {
+            "$ref": "#/components/schemas/Date"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "itens_em_estoque": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "ultima_movimentacao_em": {}
+        }
+      },
+      "ListEquipeRow": {
+        "type": "object",
+        "properties": {
+          "associado_em": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ativo": {
+            "type": "boolean"
+          },
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "telefone": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "ListFornecedoresRow": {
+        "type": "object",
+        "properties": {
+          "ativo": {
+            "type": "boolean"
+          },
+          "atualizado_em": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cidade": {
+            "type": "string",
+            "nullable": true
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "documento": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "nome_fantasia": {
+            "type": "string",
+            "nullable": true
+          },
+          "observacoes": {
+            "type": "string",
+            "nullable": true
+          },
+          "telefone": {
+            "type": "string",
+            "nullable": true
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ListInventariosRow": {
+        "type": "object",
+        "properties": {
+          "aberto_em": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "aberto_por": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "aberto_por_nome": {
+            "type": "string"
+          },
+          "categoria": {
+            "type": "string",
+            "nullable": true
+          },
+          "categoria_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "diferencas_anormais": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "finalizado_em": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finalizado_por": {
+            "type": "integer",
+            "nullable": true
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "total_itens": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "variacoes_naturais": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ListItensRow": {
+        "type": "object",
+        "properties": {
+          "ativo": {
+            "type": "boolean"
+          },
+          "atualizado_em": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "categoria": {
+            "type": "string"
+          },
+          "categoria_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "codigo": {
+            "type": "string"
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "descricao": {
+            "type": "string",
+            "nullable": true
+          },
+          "granel": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "tolerancia_pct": {
+            "type": "string",
+            "nullable": true,
+            "example": "18.5"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "unidade": {
+            "type": "string"
+          }
+        }
+      },
+      "ListMovimentacoesRow": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Date"
+          },
+          "descricao": {
+            "type": "string",
+            "nullable": true
+          },
+          "destino": {
+            "type": "string",
+            "nullable": true
+          },
+          "estornada": {
+            "type": "boolean"
+          },
+          "estorno_de": {
+            "type": "integer",
+            "nullable": true
+          },
+          "fornecedor": {
+            "type": "string",
+            "nullable": true
+          },
+          "fornecedor_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "inventario_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "item": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lancado_em": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "motivo": {
+            "type": "string",
+            "nullable": true
+          },
+          "nota_fiscal": {
+            "type": "string",
+            "nullable": true
+          },
+          "origem_compra": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantidade": {
+            "type": "string",
+            "example": "18.5"
+          },
+          "retirado_por": {
+            "type": "string",
+            "nullable": true
+          },
+          "saldo_apos": {
+            "type": "string",
+            "example": "18.5"
+          },
+          "subtipo": {
+            "type": "string",
+            "nullable": true
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "unidade": {
+            "type": "string"
+          },
+          "usuario": {
+            "type": "string"
+          },
+          "usuario_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "valor_unitario": {
+            "type": "string",
+            "nullable": true,
+            "example": "18.5"
+          }
+        }
+      },
+      "ListPerdasAnormaisRow": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Date"
+          },
+          "descricao": {
+            "type": "string",
+            "nullable": true
+          },
+          "empreendimento": {
+            "type": "string"
+          },
+          "empreendimento_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "item": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lancado_em": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "motivo": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantidade": {
+            "type": "string",
+            "example": "18.5"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "unidade": {
+            "type": "string"
+          },
+          "usuario": {
+            "type": "string"
+          },
+          "valor_unitario": {
+            "type": "string",
+            "nullable": true,
+            "example": "18.5"
+          }
+        }
+      },
+      "ListSaldosRow": {
+        "type": "object",
+        "properties": {
+          "categoria": {
+            "type": "string"
+          },
+          "categoria_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "codigo": {
+            "type": "string"
+          },
+          "granel": {
+            "type": "boolean"
+          },
+          "item_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "quantidade": {
+            "type": "string",
+            "example": "18.5"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "ultima_movimentacao_em": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "unidade": {
+            "type": "string"
+          }
+        }
+      },
+      "ListUsuariosRow": {
+        "type": "object",
+        "properties": {
+          "ativo": {
+            "type": "boolean"
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "email": {
+            "type": "string"
+          },
+          "empreendimentos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "perfil": {
+            "type": "string"
+          },
+          "telefone": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "LoginReq": {
+        "required": [
+          "email",
+          "senha"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "admin@a2g.com.br"
+          },
+          "senha": {
+            "type": "string",
+            "example": "trocar123"
+          }
+        }
+      },
+      "MembroReq": {
+        "required": [
+          "usuario_id"
+        ],
+        "type": "object",
+        "properties": {
+          "usuario_id": {
+            "type": "integer",
+            "description": "Usuário ativo com perfil obra",
+            "format": "int64"
+          }
+        }
+      },
+      "Movimentacao": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Date"
+          },
+          "descricao": {
+            "type": "string",
+            "nullable": true
+          },
+          "destino": {
+            "type": "string",
+            "nullable": true
+          },
+          "empreendimento_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "estorno_de": {
+            "type": "integer",
+            "nullable": true
+          },
+          "fornecedor_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "inventario_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "item_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lancado_em": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "motivo": {
+            "type": "string",
+            "nullable": true
+          },
+          "nota_fiscal": {
+            "type": "string",
+            "nullable": true
+          },
+          "origem_compra": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantidade": {
+            "type": "string",
+            "example": "18.5"
+          },
+          "retirado_por": {
+            "type": "string",
+            "nullable": true
+          },
+          "saldo_apos": {
+            "type": "string",
+            "example": "18.5"
+          },
+          "subtipo": {
+            "type": "string",
+            "nullable": true
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "usuario_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "valor_unitario": {
+            "type": "string",
+            "nullable": true,
+            "example": "18.5"
+          }
+        }
+      },
+      "NovoUsuarioReq": {
+        "required": [
+          "nome",
+          "email",
+          "perfil",
+          "senha"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "joao@a2g.com.br"
+          },
+          "nome": {
+            "type": "string",
+            "example": "João da Silva"
+          },
+          "perfil": {
+            "enum": [
+              "admin",
+              "obra"
+            ],
+            "type": "string"
+          },
+          "senha": {
+            "maxLength": 72,
+            "minLength": 8,
+            "type": "string",
+            "description": "Senha inicial, informada pelo administrador ao funcionário"
+          },
+          "telefone": {
+            "type": "string",
+            "nullable": true,
+            "example": "(73) 99999-0000"
+          }
+        }
+      },
+      "PaginaFornecedores": {
+        "type": "object",
+        "properties": {
+          "dados": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListFornecedoresRow"
+            },
+            "nullable": true
+          },
+          "pagina": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "por_pagina": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PaginaItens": {
+        "type": "object",
+        "properties": {
+          "dados": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListItensRow"
+            },
+            "nullable": true
+          },
+          "pagina": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "por_pagina": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PaginaMovimentacoes": {
+        "type": "object",
+        "properties": {
+          "dados": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListMovimentacoesRow"
+            },
+            "nullable": true
+          },
+          "pagina": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "por_pagina": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PaginaPerdasAnormais": {
+        "type": "object",
+        "properties": {
+          "dados": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListPerdasAnormaisRow"
+            },
+            "nullable": true
+          },
+          "pagina": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "por_pagina": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PainelAdminRow": {
+        "type": "object",
+        "properties": {
+          "cidade": {
+            "type": "string",
+            "nullable": true
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "itens_em_estoque": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "perdas_no_mes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PerdaReq": {
+        "required": [
+          "item_id",
+          "quantidade",
+          "motivo"
+        ],
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Date"
+          },
+          "descricao": {
+            "type": "string",
+            "description": "Obrigatória quando o motivo é outro",
+            "nullable": true
+          },
+          "item_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "motivo": {
+            "enum": [
+              "quebra",
+              "vencimento",
+              "intemperie",
+              "extravio",
+              "variacao_medida",
+              "outro"
+            ],
+            "type": "string"
+          },
+          "quantidade": {
+            "type": "string",
+            "example": "18.5"
+          }
+        }
+      },
+      "RedefinirSenhaReq": {
+        "required": [
+          "senha"
+        ],
+        "type": "object",
+        "properties": {
+          "senha": {
+            "maxLength": 72,
+            "minLength": 8,
+            "type": "string",
+            "description": "Nova senha provisória"
+          }
+        }
+      },
+      "SaidaReq": {
+        "required": [
+          "item_id",
+          "quantidade",
+          "destino",
+          "retirado_por"
+        ],
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Date"
+          },
+          "destino": {
+            "type": "string",
+            "description": "Serviço ou local de destino",
+            "example": "Alvenaria – Bloco B"
+          },
+          "item_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "observacoes": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantidade": {
+            "type": "string",
+            "example": "18.5"
+          },
+          "retirado_por": {
+            "type": "string",
+            "description": "Quem retirou; pode não ser usuário do sistema",
+            "example": "Zé (pedreiro)"
+          }
+        }
+      },
+      "SaldoConsolidadoItemRow": {
+        "type": "object",
+        "properties": {
+          "empreendimento": {
+            "type": "string"
+          },
+          "empreendimento_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "quantidade": {
+            "type": "string",
+            "example": "18.5"
+          }
+        }
+      },
+      "SaldoConsolidadoResp": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/Item"
+          },
+          "saldos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SaldoConsolidadoItemRow"
+            },
+            "nullable": true
+          }
+        }
+      },
+      "Saude": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          }
+        }
+      },
+      "SessaoResp": {
+        "type": "object",
+        "properties": {
+          "empreendimentos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListEmpreendimentosDoUsuarioRow"
+            },
+            "nullable": true
+          },
+          "usuario": {
+            "$ref": "#/components/schemas/Usuario"
+          }
+        }
+      },
+      "Usuario": {
+        "type": "object",
+        "properties": {
+          "ativo": {
+            "type": "boolean"
+          },
+          "atualizado_em": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "perfil": {
+            "type": "string"
+          },
+          "telefone": {
+            "type": "string",
+            "nullable": true
+          },
+          "trocar_senha": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UsuarioReq": {
+        "required": [
+          "nome",
+          "email",
+          "perfil"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "joao@a2g.com.br"
+          },
+          "nome": {
+            "type": "string",
+            "example": "João da Silva"
+          },
+          "perfil": {
+            "enum": [
+              "admin",
+              "obra"
+            ],
+            "type": "string"
+          },
+          "telefone": {
+            "type": "string",
+            "nullable": true,
+            "example": "(73) 99999-0000"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "sessao": {
+        "type": "apiKey",
+        "name": "sessao",
+        "in": "cookie",
+        "description": "Cookie HttpOnly definido pelo login"
+      }
+    }
+  }
+},
+      dom_id: "#swagger-ui",
+      deepLinking: true,
+      persistAuthorization: true,
+    });
+  </script>
+</body>
+</html>
