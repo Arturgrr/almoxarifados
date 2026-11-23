@@ -1,0 +1,39 @@
+version: "2"
+sql:
+  - engine: postgresql
+    schema: internal/database/migrations
+    queries: internal/database/queries
+    gen:
+      go:
+        package: database
+        out: internal/database
+        sql_package: pgx/v5
+        emit_json_tags: true
+        emit_pointers_for_null_types: true
+        emit_empty_slices: true
+        overrides:
+          - db_type: pg_catalog.numeric
+            go_type: github.com/shopspring/decimal.Decimal
+          - db_type: pg_catalog.numeric
+            nullable: true
+            go_type: github.com/shopspring/decimal.NullDecimal
+          - db_type: timestamptz
+            go_type: time.Time
+          - db_type: timestamptz
+            nullable: true
+            go_type:
+              type: time.Time
+              pointer: true
+          - column: usuarios.senha_hash
+            go_struct_tag: json:"-"
+          - column: usuarios.tentativas_falhas
+            go_struct_tag: json:"-"
+          - column: usuarios.bloqueado_ate
+            go_struct_tag: json:"-"
+        rename:
+          iten: Item
+          inventario_iten: InventarioItem
+          fornecedore: Fornecedor
+          movimentaco: Movimentacao
+          auditorium: Auditoria
+          sesso: Sessao
